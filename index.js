@@ -27,7 +27,7 @@ async function run() {
     console.log("Connected to MongoDB!");
 
     // Create a new task
-    app.post("/tasks", async (req, res) => {
+    app.post("/task", async (req, res) => {
         try {
           const task = req.body;
           const result = await taskCollection.insertOne(task);
@@ -52,7 +52,7 @@ async function run() {
       });
       
     // Update tasks (bulk update for drag-and-drop functionality)
-    app.put("/tasks/drag/:id", async (req, res) => {
+    app.put("/tasks/modify/:id", async (req, res) => {
         try {
           const { id } = req.params;
           const { category, order } = req.body;
@@ -70,7 +70,7 @@ async function run() {
       });
 
     // Delete a specific task
-    app.delete("/tasks/:id", async (req, res) => {
+    app.delete("/task/:id", async (req, res) => {
         try {
           const { id } = req.params;
           if (!ObjectId.isValid(id)) {
@@ -100,4 +100,4 @@ app.get("/", (req, res) => {
   app.listen(port, () => {
     console.log(`Listable is running on port ${port}`);
   }); 
-  
+
