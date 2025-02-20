@@ -1,6 +1,9 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
+const WebSocket = require("ws");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 5000;
 const app = express();
@@ -8,40 +11,77 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vdkyx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-
     const db = client.db("listable");
-    // const userCollection = db.collection("users");
-    // Send a ping to confirm a successful connection
+    const taskCollection = db.collection("tasks");
 
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+    // Routes
+    app.post("/task", async (req, res) => {
+      const task = req.body;
+      const result = await taskCollection.insertOne(task);
+      res.send(result);
+    });
+
+    app.get("/tasks", async (req, res) => {
+      const result = await taskCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete("/task/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await taskCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    console.log("Connected to MongoDB!");
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
   }
 }
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-    res.send("Hello from listable Server..");
+  res.send("Hello from listable Server...");
+});
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Set up WebSocket server on the same HTTP server
+const wss = new WebSocket.Server({ server });
+
+wss.on("connection", (ws) => {
+  console.log("New WebSocket client connected");
+
+  ws.on("message", (message) => {
+    console.log("Received:", message);
+    ws.send(`Server received: ${message}`);
   });
-  
-  app.listen(port, () => {
-    console.log(`listable is running on port ${port}`);
+
+  ws.on("close", () => {
+    console.log("Client disconnected");
   });
+
+  ws.on("error", (error) => {
+    console.error("WebSocket error:", error);
+  });
+
+  ws.send("Welcome to the WebSocket server!");
+});
+
+// Start the server
+server.listen(port, () => {
+  console.log(`listable is running on port ${port}`);
+});
