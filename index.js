@@ -38,7 +38,7 @@ async function run() {
           res.status(500).json({ error: "Failed to add task" });
         }
       });
-   
+    
     app.get("/tasks", async (req, res) => {
         try {
           const todo = await taskCollection.find({ category: "todo" }).toArray();
