@@ -1,7 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const http = require("http");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 5000;
@@ -95,9 +94,10 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Hello from listable Server...");
-});
-
-app.get("/", (req, res) => {
-    res.send("Listable server is running!");
+    res.send("Hello from listable Server..");
   });
+  
+  app.listen(port, () => {
+    console.log(`Listable is running on port ${port}`);
+  }); 
+  
