@@ -26,26 +26,78 @@ async function run() {
     const db = client.db("listable");
     const taskCollection = db.collection("tasks");
 
-    // Routes
-    app.post("/task", async (req, res) => {
-      const task = req.body;
-      const result = await taskCollection.insertOne(task);
-      res.send(result);
-    });
+    console.log("Connected to MongoDB!");
+
+    await taskCollection.insertMany([
+        { title: "Sample Todo Task", description: "This is a todo task", status: "todo" },
+        { title: "Sample In Progress Task", description: "This is in progress", status: "inProgress" },
+        { title: "Sample Done Task", description: "This is done", status: "done" }
+      ]);
+      
+    // Create a new task
+    app.post("/tasks", async (req, res) => {
+        try {
+          const task = req.body;
+          const result = await taskCollection.insertOne(task);
+          const newTask = { _id: result.insertedId, ...task };
+          res.status(201).json(newTask);
+        } catch (error) {
+          res.status(500).json({ error: "Failed to add task" });
+        }
+      });
+   
+
 
     app.get("/tasks", async (req, res) => {
-      const result = await taskCollection.find().toArray();
-      res.send(result);
-    });
+        try {
+          const todo = await taskCollection.find({ category: "todo" }).toArray();
+          const inProgress = await taskCollection
+            .find({ category: "inProgress" })
+            .toArray();
+          const done = await taskCollection.find({ category: "done" }).toArray();
+          res.json({ todo, inProgress, done });
+        } catch (error) {
+          res.status(500).json({ error: "Failed to fetch tasks" });
+        }
+      });
+      
 
-    app.delete("/task/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await taskCollection.deleteOne(query);
-      res.send(result);
-    });
+    // Update tasks (bulk update for drag-and-drop functionality)
+    app.put("/tasks/drag/:id", async (req, res) => {
+        try {
+          const { id } = req.params;
+          const { category, order } = req.body;
+          const filter = { _id: new ObjectId(id) };
+          const updateDoc = { $set: { category, order } };
+          const result = await taskCollection.updateOne(filter, updateDoc);
+          if (result.modifiedCount === 0) {
+            return res.status(404).json({ error: "Task not found" });
+          }
+          const updatedTask = await taskCollection.findOne(filter);
+          res.json(updatedTask);
+        } catch (error) {
+          res.status(500).json({ error: "Failed to update task order" });
+        }
+      });
 
-    console.log("Connected to MongoDB!");
+    // Delete a specific task
+    app.delete("/tasks/:id", async (req, res) => {
+        try {
+          const { id } = req.params;
+          if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "Invalid ObjectId" });
+          }
+          const result = await taskCollection.deleteOne({
+            _id: new ObjectId(id),
+          });
+          if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Task not found" });
+          }
+          res.json({ message: "Task deleted" });
+        } catch (error) {
+          res.status(500).json({ error: "Failed to delete task" });
+        }
+      });
   } catch (error) {
     console.error("MongoDB connection error:", error);
   }
@@ -61,6 +113,15 @@ const server = http.createServer(app);
 
 // Set up WebSocket server on the same HTTP server
 const wss = new WebSocket.Server({ server });
+
+// Broadcast function to send messages to all connected clients
+const broadcast = (message) => {
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+};
 
 wss.on("connection", (ws) => {
   console.log("New WebSocket client connected");
@@ -80,6 +141,10 @@ wss.on("connection", (ws) => {
 
   ws.send("Welcome to the WebSocket server!");
 });
+
+app.get("/", (req, res) => {
+    res.send("Listable server is running!");
+  });
 
 // Start the server
 server.listen(port, () => {
