@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
-const WebSocket = require("ws");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 5000;
@@ -28,12 +27,6 @@ async function run() {
 
     console.log("Connected to MongoDB!");
 
-    await taskCollection.insertMany([
-        { title: "Sample Todo Task", description: "This is a todo task", status: "todo" },
-        { title: "Sample In Progress Task", description: "This is in progress", status: "inProgress" },
-        { title: "Sample Done Task", description: "This is done", status: "done" }
-      ]);
-      
     // Create a new task
     app.post("/tasks", async (req, res) => {
         try {
@@ -46,8 +39,6 @@ async function run() {
         }
       });
    
-
-
     app.get("/tasks", async (req, res) => {
         try {
           const todo = await taskCollection.find({ category: "todo" }).toArray();
@@ -61,7 +52,6 @@ async function run() {
         }
       });
       
-
     // Update tasks (bulk update for drag-and-drop functionality)
     app.put("/tasks/drag/:id", async (req, res) => {
         try {
@@ -108,45 +98,6 @@ app.get("/", (req, res) => {
   res.send("Hello from listable Server...");
 });
 
-// Create HTTP server
-const server = http.createServer(app);
-
-// Set up WebSocket server on the same HTTP server
-const wss = new WebSocket.Server({ server });
-
-// Broadcast function to send messages to all connected clients
-const broadcast = (message) => {
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  });
-};
-
-wss.on("connection", (ws) => {
-  console.log("New WebSocket client connected");
-
-  ws.on("message", (message) => {
-    console.log("Received:", message);
-    ws.send(`Server received: ${message}`);
-  });
-
-  ws.on("close", () => {
-    console.log("Client disconnected");
-  });
-
-  ws.on("error", (error) => {
-    console.error("WebSocket error:", error);
-  });
-
-  ws.send("Welcome to the WebSocket server!");
-});
-
 app.get("/", (req, res) => {
     res.send("Listable server is running!");
   });
-
-// Start the server
-server.listen(port, () => {
-  console.log(`listable is running on port ${port}`);
-});
