@@ -69,6 +69,39 @@ async function run() {
         }
       });
 
+      // Route to update an existing task
+app.put("/tasks/:id", async (req, res) => {
+    const taskId = req.params.id; // Get the task ID from the URL parameter
+    const { title, description } = req.body; // Get the updated task data from the request body
+  console.log(title, description)
+    if (!title || !description) {
+      return res.status(400).send({ error: "All fields (title, description, status) are required" });
+    }
+  
+    const updatedTask = {
+      title,
+      description,
+    };
+  
+    try {
+      const result = await taskCollection.updateOne(
+        { _id: new ObjectId(taskId) }, // Find the task by ID
+        { $set: updatedTask } // Update the task
+      );
+  
+      if (result.matchedCount === 0) {
+        return res.status(404).send({ error: "Task not found" });
+      }
+  
+      console.log("Task updated:", result);
+      res.send({ message: "Task successfully updated", task: updatedTask });
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).send({ error: "Failed to update task" });
+    }
+  });
+   
+
     // Delete a specific task
     app.delete("/task/:id", async (req, res) => {
         try {
